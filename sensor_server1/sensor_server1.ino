@@ -1,5 +1,4 @@
 #include <ESP8266WiFiMesh.h>
-
 #include <DHT_U.h>
 #include <DHT.h>
 #include <ESP8266WiFi.h>
@@ -7,9 +6,9 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 
-// todo: insert this at run time but not in repo. 
-const char* ssid = ".....";
-const char* password = ".....";
+
+const char* ssid = "parknet";
+const char* password = "s3ns0rNet";
 
 ESP8266WebServer server(80);
 
@@ -35,71 +34,42 @@ ESP8266WebServer server(80);
 DHT dht(DHTPIN, DHTTYPE);
 
 
-/*
-
-{
-   float f = 1.123456789;
-   char c[50]; //size of the number
-    sprintf(c, "%g", f);
-    printf(c);
-    printf("\n");
-}
-
-*/
-
-
 
 const int led = 13;
 
 void handleRoot() {
   digitalWrite(led, 1);
 
-#if 0
-  //humidity
-  float h = dht.readHumidity();
-  char c[80];
-  sprintf(c, "%g", h);
 
-  //temp
-  float t = dht.readTemperature(true);
-  char temp[50];
-  sprintf(temp, "%g", t);
-  
-  char readout[80];
-  strcpy(readout, "Humidity: ");
-  strcat(readout, c);
-  strcat(readout, "% ");
-  strcat(readout, " Temperature: ");
-  strcat(readout, temp);
-  strcat(readout, "F");
-#endif
 
  char readout[80];
+
+ float h = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+  // Read temperature as Fahrenheit (isFahrenheit = true)
+  float f = dht.readTemperature(true);
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  // Compute heat index in Fahrenheit (the default)
+  float hif = dht.computeHeatIndex(f, h);
+  // Compute heat index in Celsius (isFahreheit = false)
+  float hic = dht.computeHeatIndex(t, h, false);
+
   
  sprintf(readout,
-     "Humidity: %.02f%%  Temperature: %.02f F  Heat Index: %f",
+     "Humidity: %.02f%%  Temperature: %.02fF  Heat Index: %.02fF",
      dht.readHumidity(),
      dht.readTemperature(true),
-     0.0
+     hif
      );
 
-
-  
-  //server.send(200, "text/plain", "Humidity =      hello from esp8266. this is where we want to put sensor data, ya?!");
-
-
-/*
-char str[80];
-strcpy(str, "these ");
-strcat(str, "strings ");
-strcat(str, "are ");
-strcat(str, "concatenated.");
-    x = t c 
-
-*/
-    
-   
-   server.send(200, "text/plain", readout );
+  server.send(200, "text/plain",readout );
   
   digitalWrite(led, 0);
 }
