@@ -56,17 +56,12 @@ void handleRoot() {
     return;
   }
 
-  // Compute heat index in Fahrenheit (the default)
-  float hif = dht.computeHeatIndex(f, h);
-  // Compute heat index in Celsius (isFahreheit = false)
-  float hic = dht.computeHeatIndex(t, h, false);
-
   
  sprintf(readout,
      "Humidity: %.02f%%  Temperature: %.02fF  Heat Index: %.02fF",
      dht.readHumidity(),
      dht.readTemperature(true),
-     hif
+     dht.computeHeatIndex(f, h)
      );
 
   server.send(200, "text/plain",readout );
