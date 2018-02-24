@@ -11,7 +11,7 @@
 #include <DHT_U.h>
 #include <DHT.h>
 
-// guest network at 5330, move these secrets out.
+
 const char* ssid = "parknet";
 const char* password = "s3ns0rNet";
 
@@ -31,7 +31,8 @@ ESP8266WebServer server(80);
 
 DHT dht(DHTPIN, DHTTYPE);
 
-Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
+// Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
+Adafruit_BME280 bme; // I2C
 
 const int led = 13;
 
@@ -74,10 +75,10 @@ void handleRoot() {
       (bme.readPressure() / 100.0F),
       (bme.readAltitude(SEALEVELPRESSURE_HPA)),
       (bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.2808399,
-      dht.readHumidity(),
-      dht.readTemperature(),
-      dht.readTemperature(true),
-      dht.computeHeatIndex(f, h)
+       dht.readHumidity(),
+       dht.readTemperature(),
+       dht.readTemperature(true),
+       dht.computeHeatIndex(f, h)
       );
 
 
