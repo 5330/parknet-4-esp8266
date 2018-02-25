@@ -85,7 +85,7 @@ ESP8266WebServer server(80);
 #define BME_MOSI 14
 #define BME_CS 16
 //#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1023.6)
+#define SEALEVELPRESSURE_HPA (1017.9)
 
 #define DHTPIN 2     // what digital pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
@@ -107,19 +107,59 @@ void handleRoot() {
         while (1);
       }
 
+  float celsius = bme.readTemperature();
+  float fahrenheit = ((celsius * 9)/5) + 32;
+  float h = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float t = dht.readTemperature();
+  // Read temperature as Fahrenheit (isFahrenheit = true)
+  float f = dht.readTemperature(true);
 
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(h) || isnan(t) || isnan(f)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  
+  sensors_event_t event;
+   tsl.getEvent(&event);
 
  
-  StaticJsonBuffer<1024> jsonBuffer;
+  StaticJsonBuffer<512> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
- 
 
-  root["sensor"] = "BME280";
-  root["Temp"] = bme.readTemperature();
+    
+    
+    root["Fahrenheit-bme280"] = fahrenheit;
+    root["Fahrenheit-dht22"] =  dht.readTemperature(true);
  
+    root["Celsius-bme280"] = bme.readTemperature();
+    root["Celsius-dht22"] = dht.readTemperature();
+    
+    root["Relative Humdity % - bme280"] = bme.readHumidity();
+    root["Relative Humdity % - dht22"] = dht.readHumidity();
+    
+    root["Heat Index (dht22) in F"] =  dht.computeHeatIndex(f, h);    
+        
+    root["Barometric Pressure in hPa"] = (bme.readPressure() / 100.0F);
+    root["Approx. Altitude (meters)"] = (bme.readAltitude(SEALEVELPRESSURE_HPA));
+    root["Approx. Altitude (feet)"] = (bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399;
+    
+    root["Sea Level Pressure (noaa)"] =  SEALEVELPRESSURE_HPA;
+    
+    root["Lux"] = event.light;
+    
+    
   String readout;
-  root.prettyPrintTo(readout);
-  server.send(200, "text/json", readout );
+  root.printTo(readout);
+  server.send(200, "application/json", readout);
+
+
+
+
+
+
 
   digitalWrite(led, 0);
 
