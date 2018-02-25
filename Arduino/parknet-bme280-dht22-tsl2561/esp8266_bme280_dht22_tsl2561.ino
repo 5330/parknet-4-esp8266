@@ -11,6 +11,8 @@
 #include <DHT_U.h>
 #include <DHT.h>
 #include <Adafruit_TSL2561_U.h>
+#include <ArduinoJson.h>
+
 
 
 /*
@@ -29,7 +31,7 @@ void displaySensorDetails(void)
   Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
   Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" lux");
   Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" lux");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" lux");  
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" lux");
   Serial.println("------------------------------------");
   Serial.println("");
   delay(500);
@@ -46,15 +48,15 @@ void configureSensor(void)
   // tsl.setGain(TSL2561_GAIN_1X);      /* No gain ... use in bright light to avoid sensor saturation */
   // tsl.setGain(TSL2561_GAIN_16X);     /* 16x gain ... use in low light to boost sensitivity */
   tsl.enableAutoRange(true);            /* Auto-gain ... switches automatically between 1x and 16x */
-  
+
   /* Changing the integration time gives you better sensor resolution (402ms = 16-bit data) */
   // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS);      /* fast but low resolution */
   // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_101MS);  /* medium resolution and speed   */
   tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_402MS);  /* 16-bit data but slowest conversions */
 
-  
+
 /* Initialise the sensor */
-  //use tsl.begin() to default to Wire, 
+  //use tsl.begin() to default to Wire,
   //tsl.begin(&Wire2) directs api to use Wire2, etc.
   if(!tsl.begin())
   {
@@ -66,10 +68,10 @@ void configureSensor(void)
 
   /* Display some basic information on this sensor */
   displaySensorDetails();
-  
+
   /* Setup the sensor gain and integration time */
   configureSensor();
-  
+
 };
 
 
@@ -109,35 +111,53 @@ void handleRoot() {
 
  char readout[1024];
 
-
- float celsius = bme.readTemperature();
-
- float fahrenheit = ((celsius * 9)/5) + 32;
-
-
-
- float h = dht.readHumidity();
+  float celsius = bme.readTemperature();
+  float fahrenheit = ((celsius * 9)/5) + 32;
+  float h = dht.readHumidity();
   // Read temperature as Celsius (the default)
   float t = dht.readTemperature();
   // Read temperature as Fahrenheit (isFahrenheit = true)
   float f = dht.readTemperature(true);
 
   // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t) || isnan(f)) {
+   if (isnan(h) || isnan(t) || isnan(f)) {
     Serial.println("Failed to read from DHT sensor!");
     return;
-  }
-
- 
-  sensors_event_t event;
-  tsl.getEvent(&event);
- 
+   }
 
 
+   sensors_event_t event;
+   tsl.getEvent(&event);
 
 
- sprintf(readout,
-     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",  
+StaticJsonBuffer<200> jsonBuffer;
+
+char json[] = "{\"sensor\":\"bme280\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
+
+JsonObject& root = jsonBuffer.parseObject(json);
+
+if(!root.success()) {
+  Serial.println("parseObject() failed");
+  return false;
+}
+
+const char* sensor = root["sensor"];
+long time = root["time"];
+double latitude = root["data"][0];
+double longitude = root["data"][1];
+
+
+sprintf(readout2,
+     '{"sensor":"%s",
+              "BME280": "%s",
+              " Relative Humidity: "%s"
+            }', BME280, bme.readHumidity())
+          );
+
+
+/*
+  sprintf(readout,
+     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",
       bme.readHumidity(),
       bme.readTemperature(),
       fahrenheit,
@@ -150,7 +170,7 @@ void handleRoot() {
        dht.computeHeatIndex(f, h),
        event.light
       );
-
+*/
 
   server.send(200, "text/plain",readout );
 
