@@ -7,8 +7,10 @@
 #include <ESP8266mDNS.h>
 
 
-const char* ssid = "parknet";
-const char* password = "s3ns0rNet";
+const char* ssid = "madars";
+// const char* password = "s3ns0rNet";
+const char* password = "lexapro123";
+
 
 ESP8266WebServer server(80);
 
