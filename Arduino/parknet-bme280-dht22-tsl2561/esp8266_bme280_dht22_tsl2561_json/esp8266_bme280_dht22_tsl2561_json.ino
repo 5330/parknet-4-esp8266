@@ -12,8 +12,7 @@
 #include <DHT.h>
 #include <Adafruit_TSL2561_U.h>
 #include <ArduinoJson.h>
-
-
+#include <time.h>
 
 /*
  * Connect SCL to I2C SCL Clock
@@ -87,7 +86,7 @@ ESP8266WebServer server(80);
 #define BME_MOSI 14
 #define BME_CS 16
 //#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1023.6)
+#define SEALEVELPRESSURE_HPA (1017.2)
 
 #define DHTPIN 2     // what digital pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
@@ -100,17 +99,18 @@ Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
 const int led = 13;
 
 void handleRoot() {
+
   digitalWrite(led, 1);
 
-// initialize sensor (required)
+  // initialize sensor (required)
       if (!bme.begin()) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
         while (1);
       }
 
 
- char readout[1024];
-
+// dht22 pre-flight
+  
   float celsius = bme.readTemperature();
   float fahrenheit = ((celsius * 9)/5) + 32;
   float h = dht.readHumidity();
@@ -118,64 +118,116 @@ void handleRoot() {
   float t = dht.readTemperature();
   // Read temperature as Fahrenheit (isFahrenheit = true)
   float f = dht.readTemperature(true);
-
+  
   // Check if any reads failed and exit early (to try again).
-   if (isnan(h) || isnan(t) || isnan(f)) {
+  if (isnan(h) || isnan(t) || isnan(f)) {
     Serial.println("Failed to read from DHT sensor!");
     return;
-   }
+  }
 
 
-   sensors_event_t event;
+
+
+//bme pre-flight
+
+    float humi = bme.readHumidity();
+    float temp = bme.readTemperature();
+    float dpc =  (temp - (14.55 + 0.114 * temp) * (1 - (0.01 * humi)) - pow(((2.5 + 0.007 * temp) * (1 - (0.01 * humi))),3) - (15.9 + 0.117 * temp) * pow((1 - (0.01 * humi)), 14));
+    float dpf = ((dpc * 9)/5) + 32;
+
+
+   
+
+// tsl  
+  sensors_event_t event;
    tsl.getEvent(&event);
 
 
-StaticJsonBuffer<200> jsonBuffer;
 
-char json[] = "{\"sensor\":\"bme280\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
-
-JsonObject& root = jsonBuffer.parseObject(json);
-
-if(!root.success()) {
-  Serial.println("parseObject() failed");
-  return false;
-}
-
-const char* sensor = root["sensor"];
-long time = root["time"];
-double latitude = root["data"][0];
-double longitude = root["data"][1];
+// time 
+time_t now = time(nullptr);
 
 
-sprintf(readout2,
-     '{"sensor":"%s",
-              "BME280": "%s",
-              " Relative Humidity: "%s"
-            }', BME280, bme.readHumidity())
-          );
 
 
+// get all the sensor data into a json object and server.send
 /*
-  sprintf(readout,
-     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",
-      bme.readHumidity(),
-      bme.readTemperature(),
-      fahrenheit,
-      (bme.readPressure() / 100.0F),
-      (bme.readAltitude(SEALEVELPRESSURE_HPA)),
-      (bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.2808399,
-       dht.readHumidity(),
-       dht.readTemperature(),
-       dht.readTemperature(true),
-       dht.computeHeatIndex(f, h),
-       event.light
-      );
+  StaticJsonBuffer<512> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+
+    
+    root["Fahrenheit-bme280"] = fahrenheit;
+    root["Fahrenheit-dht22"] =  dht.readTemperature(true);
+ 
+    root["Celsius-bme280"] = bme.readTemperature();
+    root["Celsius-dht22"] = dht.readTemperature();
+    
+    root["Relative Humdity % - bme280"] = bme.readHumidity();
+    root["Relative Humdity % - dht22"] = dht.readHumidity();
+
+    root["Dew Point (bme280) Celsius"] = dpc;
+    root["Dew Point (bme280) Fahrenheit"] = dpf;
+    
+    root["Heat Index (dht22) in F"] =  dht.computeHeatIndex(f, h);    
+        
+    root["Barometric Pressure in hPa"] = (bme.readPressure() / 100.0F);
+    root["Approx. Altitude (meters)"] = (bme.readAltitude(SEALEVELPRESSURE_HPA));
+    root["Approx. Altitude (feet)"] = (bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399;
+    
+    root["Sea Level Pressure (noaa)"] =  SEALEVELPRESSURE_HPA;
+    
+    root["Lux"] = event.light;
 */
 
-  server.send(200, "text/plain",readout );
+
+// let's try better json
+
+   StaticJsonBuffer<512> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+
+  
+    root["sensor"] = "bme280";
+    root["UTC"] = (ctime(&now));
+
+    JsonArray& data = root.createNestedArray("data");
+     data.add(fahrenheit);
+     data.add(bme.readTemperature());
+     data.add(bme.readHumidity());
+     data.add(dpc);
+     data.add(dpf);
+     data.add((bme.readPressure() / 100.0F));
+     data.add((bme.readAltitude(SEALEVELPRESSURE_HPA))) * 3.3208399;
+     data.add(event.light);
+  
+
+
+    
+  String readout;
+  root.printTo(readout);
+  server.send(200, "application/json", readout);
 
   digitalWrite(led, 0);
+
+
+
+
+
+
+
+  
+
 }
+
+
+
+
+
+
+
+
+
+
+
 
 void handleNotFound(){
   digitalWrite(led, 1);
@@ -217,7 +269,24 @@ void setup(void){
     Serial.println("MDNS responder started");
   }
 
-  server.on("/", handleRoot);
+// ntp, really?
+configTime(3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+Serial.println("\nWaiting for time");
+  while (!time(nullptr)) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("");
+  while (!time(nullptr)) {
+    Serial.print(".");
+    delay(1000);
+  }
+Serial.println("");
+
+
+
+
+  server.on("/",handleRoot);
 
     server.on("/inline", [](){
       server.send(200, "text/plain", "this works as well");
@@ -227,8 +296,18 @@ void setup(void){
 
     server.begin();
     Serial.println("HTTP server started");
+    delay(3000);
+     time_t now = time(nullptr);
+     Serial.println(ctime(&now));
+
+    
   }
 
   void loop(void){
     server.handleClient();
+ //   time_t now = time(nullptr);
+ //   Serial.println(ctime(&now));
+ //   delay(1000);
+
+    
   }
