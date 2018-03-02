@@ -1,19 +1,43 @@
 
 
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+
+//esp8266
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+#include <Wire.h>
+#include <SPI.h>
+
+
+//sensors
 //#include <DHT_U.h>
 //#include <DHT.h>
 #include <Adafruit_TSL2561_U.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 #include <ArduinoJson.h>
-#include <time.h>
 
+//#include <time.h>
+//ntp not yet impemented. maybe try https://www.arduinoslovakia.eu/blog/2017/7/esp8266---ntp-klient-a-letny-cas?lang=en
+// or better yet, fuck it and write time to "db" when we log. 
+//#include <WiFiUdp.h>
+//#include <TimeLib.h>
+//#include <Timezone.h>
+
+
+/* need to store these as arduino macros. 
+https://github.com/RoboUlbricht/arduinoslovakia/tree/master/extra_parameter
+http://www.arduinoslovakia.eu/blog/2017/6/vlozenie-definicie-makra-do-programu-v-arduine?lang=en
+*/
+//const char* ssid = "parknet";
+//const char* password = "s3ns0rNet";
+const char* ssid = "Verizon-791L-A905";
+const char* password = "66888aa6";
+
+
+
+ESP8266WebServer server(80);
 
 /*
  * Connect SCL to I2C SCL Clock
@@ -75,13 +99,7 @@ void configureSensor(void)
 };
 
 
-const char* ssid = "parknet";
-const char* password = "s3ns0rNet";
-
-
-ESP8266WebServer server(80);
-
-
+// define bme280
 #define BME_SCK 13
 #define BME_MISO 12
 #define BME_MOSI 14
@@ -91,9 +109,10 @@ ESP8266WebServer server(80);
 //#define SEALEVELPRESSURE_HPA (1013.25)
 #define SEALEVELPRESSURE_HPA (1008.9)
 
+
+//define dht22
 //#define DHTPIN 2     // what digital pin we're connected to
 //#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
-
 //DHT dht(DHTPIN, DHTTYPE);
 
 Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
@@ -131,7 +150,7 @@ void handleRoot() {
 
 
 // time 
-time_t now = time(nullptr);
+//time_t now = time(nullptr);
 // i swear this was reporting accurate time but 8 hours ahead, now it is showing epoch/1970 shit, fekkit. 
 
 
@@ -142,7 +161,7 @@ time_t now = time(nullptr);
   StaticJsonBuffer<1024> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
  
-    root["reading"] = (ctime(&now));
+ //   root["reading"] = (ctime(&now));
     root["bmeTempF"] = (fahrenheit);
     root["bmeTempC"] = (bme.readTemperature());
     root["bmeHumidity"] = (bme.readHumidity());
@@ -232,6 +251,7 @@ void handleNotFound(){
   digitalWrite(led, 0);
 }
 
+
 void setup(void){
   pinMode(led, OUTPUT);
   digitalWrite(led, 0);
@@ -265,8 +285,8 @@ void setup(void){
 
     server.begin();
     Serial.println("HTTP server started");
-    time_t now = time(nullptr);
-     Serial.println(ctime(&now));
+ //   time_t now = time(nullptr);
+//     Serial.println(ctime(&now));
   }
 
   void loop(void){
