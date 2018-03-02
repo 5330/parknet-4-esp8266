@@ -8,9 +8,11 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include <DHT_U.h>
-#include <DHT.h>
+//#include <DHT_U.h>
+//#include <DHT.h>
 #include <Adafruit_TSL2561_U.h>
+#include <ArduinoJson.h>
+#include <time.h>
 
 
 /*
@@ -29,7 +31,7 @@ void displaySensorDetails(void)
   Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
   Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" lux");
   Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" lux");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" lux");  
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" lux");
   Serial.println("------------------------------------");
   Serial.println("");
   delay(500);
@@ -46,15 +48,15 @@ void configureSensor(void)
   // tsl.setGain(TSL2561_GAIN_1X);      /* No gain ... use in bright light to avoid sensor saturation */
   // tsl.setGain(TSL2561_GAIN_16X);     /* 16x gain ... use in low light to boost sensitivity */
   tsl.enableAutoRange(true);            /* Auto-gain ... switches automatically between 1x and 16x */
-  
+
   /* Changing the integration time gives you better sensor resolution (402ms = 16-bit data) */
   // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS);      /* fast but low resolution */
   // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_101MS);  /* medium resolution and speed   */
   tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_402MS);  /* 16-bit data but slowest conversions */
 
-  
+
 /* Initialise the sensor */
-  //use tsl.begin() to default to Wire, 
+  //use tsl.begin() to default to Wire,
   //tsl.begin(&Wire2) directs api to use Wire2, etc.
   if(!tsl.begin())
   {
@@ -66,10 +68,10 @@ void configureSensor(void)
 
   /* Display some basic information on this sensor */
   displaySensorDetails();
-  
+
   /* Setup the sensor gain and integration time */
   configureSensor();
-  
+
 };
 
 
@@ -84,13 +86,15 @@ ESP8266WebServer server(80);
 #define BME_MISO 12
 #define BME_MOSI 14
 #define BME_CS 16
-//#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1023.6)
 
-#define DHTPIN 2     // what digital pin we're connected to
-#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+// default 1013.25 
+#define SEALEVELPRESSURE_HPA (1013.25)
+//#define SEALEVELPRESSURE_HPA (1023.6)
 
-DHT dht(DHTPIN, DHTTYPE);
+//#define DHTPIN 2     // what digital pin we're connected to
+//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+
+//DHT dht(DHTPIN, DHTTYPE);
 
 Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
 //Adafruit_BME280 bme; // I2C
@@ -98,23 +102,73 @@ Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
 const int led = 13;
 
 void handleRoot() {
+
   digitalWrite(led, 1);
 
-// initialize sensor (required)
+  // initialize sensor (required)
       if (!bme.begin()) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
         while (1);
       }
 
 
+
+//bme pre-flight
+
+    float humi = bme.readHumidity();
+    float temp = bme.readTemperature();
+    float dpc =  (temp - (14.55 + 0.114 * temp) * (1 - (0.01 * humi)) - pow(((2.5 + 0.007 * temp) * (1 - (0.01 * humi))),3) - (15.9 + 0.117 * temp) * pow((1 - (0.01 * humi)), 14));
+    float dpf = ((dpc * 9)/5) + 32;
+    
+    float fahrenheit = ((temp * 9)/5) + 32;
+
+   
+
+// tsl pre-flight
+  sensors_event_t event;
+   tsl.getEvent(&event);
+ 
+
+
+// time 
+time_t now = time(nullptr);
+// i swear this was reporting accurate time but 8 hours ahead, now it is showing epoch/1970 shit, fekkit. 
+
+
+  
+  
+// json payload
+ 
+  StaticJsonBuffer<1024> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+ 
+    root["reading"] = (ctime(&now));
+    root["bmeTempF"] = (fahrenheit);
+    root["bmeTempC"] = (bme.readTemperature());
+    root["bmeHumidity"] = (bme.readHumidity());
+    root["bmeDewPointC"] = (dpc);
+    root["bmeDewPointF"] = (dpf);
+    root["bmePressurehPa"] = ((bme.readPressure() / 100.0F));
+    root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
+    root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
+    root["tslLux"] = (event.light);
+
+ 
+  String readout;
+  root.prettyPrintTo(readout);
+  server.send(200, "text/json", readout );
+
+  digitalWrite(led, 0);
+
+}
+
+
+/*  text readout  this works
+
  char readout[1024];
 
-
  float celsius = bme.readTemperature();
-
  float fahrenheit = ((celsius * 9)/5) + 32;
-
-
 
  float h = dht.readHumidity();
   // Read temperature as Celsius (the default)
@@ -128,16 +182,13 @@ void handleRoot() {
     return;
   }
 
- 
+
   sensors_event_t event;
   tsl.getEvent(&event);
- 
-
-
 
 
  sprintf(readout,
-     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",  
+     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",
       bme.readHumidity(),
       bme.readTemperature(),
       fahrenheit,
@@ -150,12 +201,19 @@ void handleRoot() {
        dht.computeHeatIndex(f, h),
        event.light
       );
-
-
-  server.send(200, "text/plain",readout );
+ server.send(200, "text/plain", readout );
 
   digitalWrite(led, 0);
 }
+
+*/
+
+
+
+
+
+
+
 
 void handleNotFound(){
   digitalWrite(led, 1);
@@ -197,7 +255,7 @@ void setup(void){
     Serial.println("MDNS responder started");
   }
 
-  server.on("/", handleRoot);
+  server.on("/",handleRoot);
 
     server.on("/inline", [](){
       server.send(200, "text/plain", "this works as well");
@@ -207,6 +265,8 @@ void setup(void){
 
     server.begin();
     Serial.println("HTTP server started");
+    time_t now = time(nullptr);
+     Serial.println(ctime(&now));
   }
 
   void loop(void){
