@@ -1,5 +1,19 @@
-// si1145 won't work in parallel w/ other i2c.  
-// need to look at addressing
+
+/* i2c addressing
+ *  
+ *  bme280: By default, the i2c address is 0x77.  If you add a jumper from SDO to GND, the address will change to 0x76.
+ *  
+ *  tsl2561 Connect ADDR pin to ground to set the address to 0x29, connect it to 3.3V (vcc) to set the address to 0x49 or leave it floating (unconnected) to use address 0x39.
+ *  
+ *  SI1145 has a fixed I2C address (0x60)
+ *  
+ *  MPL3115A2 - I2C 7-bit fixed address 0x60
+ *  
+ *  VEML6070 UV sensor uses I2c 0x38 and 0x39.
+
+
+*/  
+
 
 
 //esp8266
