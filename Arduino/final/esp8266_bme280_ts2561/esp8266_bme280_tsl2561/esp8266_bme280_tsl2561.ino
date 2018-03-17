@@ -119,15 +119,10 @@ void configureSensor(void)
 };
 
 
-// define bme280
-#define BME_SCK 13
-#define BME_MISO 12
-#define BME_MOSI 14
-#define BME_CS 16
 
 // default 1013.25  need to dynamically get this from http://www.wrh.noaa.gov/cnrfc/rsa_getObs.php?sid=KIND&num=48  updated every :54 of the hour
 //#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1014.6)
+#define SEALEVELPRESSURE_HPA (1015.7)
 
 
 //define dht22
@@ -136,14 +131,15 @@ void configureSensor(void)
 //DHT dht(DHTPIN, DHTTYPE);
 
 //Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
-Adafruit_BME280 bme; // I2C
+Adafruit_BME280 bme;
+
 
 Adafruit_VEML6070 vuv = Adafruit_VEML6070();
 
 
-Adafruit_SI1145 uv = Adafruit_SI1145();
+//Adafruit_SI1145 uv = Adafruit_SI1145();
 
-Adafruit_MPL3115A2 baro = Adafruit_MPL3115A2();
+//Adafruit_MPL3115A2 baro = Adafruit_MPL3115A2();
 
 
 const int led = 13;
@@ -176,7 +172,7 @@ void handleRoot() {
    tsl.getEvent(&event);
 
 // veml6070 pre-flight
-   vuv.begin(VEML6070_1_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
+//   vuv.begin(VEML6070_1_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
 
 
  /*si1145 pre-flight
@@ -194,7 +190,7 @@ void handleRoot() {
 
 */
 
-// MPL3115A2 pre-flight
+/* MPL3115A2 pre-flight
 
 if (! baro.begin()) {
   Serial.println("Couldnt find MPL3115A2");
@@ -212,7 +208,7 @@ float tempC = baro.getTemperature();
 //Serial.print(tempC); Serial.println("*C");
 
 float tempF = ((tempC * 9)/5) + 32;
-
+*/
 
 // time
 //time_t now = time(nullptr);
@@ -231,16 +227,16 @@ float tempF = ((tempC * 9)/5) + 32;
     root["bmePressurehPa"] = ((bme.readPressure() / 100.0F));
     root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
     root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
-//    root["tslLUX"] = (event.light);
-    root["vml_UV"] = (vuv.readUV());
+    root["tslLUX"] = (event.light);
+//    root["vml_UV"] = (vuv.readUV());
 //    root["siVis"] = (uv.readVisible());
 //    root["siIR"] = (uv.readIR());
 //    root["siUVindex"] = (UVindex);
-    root["mplInchesHg"] = (pascals/3377);
-    root["mplAltitudeMeters"] = baro.getAltitude();
-    root["mplAltitudeFeet"] = (baro.getAltitude() * 3.3208399);
-    root["mplTempC"] = baro.getTemperature();
-    root["mplTempF"] = tempF;
+//    root["mplInchesHg"] = (pascals/3377);
+//   root["mplAltitudeMeters"] = baro.getAltitude();
+//   root["mplAltitudeFeet"] = (baro.getAltitude() * 3.3208399);
+//   root["mplTempC"] = baro.getTemperature();
+//   root["mplTempF"] = tempF;
 
 
   String readout;
