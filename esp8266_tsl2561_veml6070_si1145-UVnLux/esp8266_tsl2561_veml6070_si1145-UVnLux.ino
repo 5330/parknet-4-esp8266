@@ -1,18 +1,24 @@
 
 /* i2c addressing
- *
+ *  
  *  bme280: By default, the i2c address is 0x77.  If you add a jumper from SDO to GND, the address will change to 0x76.
- *
+ *  
  *  tsl2561 Connect ADDR pin to ground to set the address to 0x29, connect it to 3.3V (vcc) to set the address to 0x49 or leave it floating (unconnected) to use address 0x39.
- *
+ *  
  *  SI1145 has a fixed I2C address (0x60)
- *
+ *  
  *  MPL3115A2 - I2C 7-bit fixed address 0x60
- *
+ *  
  *  VEML6070 UV sensor uses I2c 0x38 and 0x39.
 
 
-*/
+This config: 
+si1145 0x60  fixed
+veml6070 0x38 and 0x39 fixed
+tsl2561  Connect ADDR pin to ground to set the address to 0x29
+bme280:  0x77
+
+*/  
 
 
 
@@ -119,10 +125,15 @@ void configureSensor(void)
 };
 
 
+// define bme280
+#define BME_SCK 13
+#define BME_MISO 12
+#define BME_MOSI 14
+#define BME_CS 16
 
 // default 1013.25  need to dynamically get this from http://www.wrh.noaa.gov/cnrfc/rsa_getObs.php?sid=KIND&num=48  updated every :54 of the hour
 //#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1015.7)
+#define SEALEVELPRESSURE_HPA (1008.1)
 
 
 //define dht22
@@ -130,16 +141,15 @@ void configureSensor(void)
 //#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
 //DHT dht(DHTPIN, DHTTYPE);
 
-//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
-Adafruit_BME280 bme;
-
+Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
+//Adafruit_BME280 bme; // I2C
 
 Adafruit_VEML6070 vuv = Adafruit_VEML6070();
 
 
-//Adafruit_SI1145 uv = Adafruit_SI1145();
+Adafruit_SI1145 uv = Adafruit_SI1145();
 
-//Adafruit_MPL3115A2 baro = Adafruit_MPL3115A2();
+Adafruit_MPL3115A2 baro = Adafruit_MPL3115A2();
 
 
 const int led = 13;
@@ -151,7 +161,7 @@ void handleRoot() {
   // initialize sensor (required)
       if (!bme.begin()) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    //    while (1);
+        while (1);
       }
 
 
@@ -172,14 +182,14 @@ void handleRoot() {
    tsl.getEvent(&event);
 
 // veml6070 pre-flight
-//   vuv.begin(VEML6070_1_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
+   vuv.begin(VEML6070_4_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
 
-
- /*si1145 pre-flight
+ 
+// si1145 pre-flight
 
      if (! uv.begin()) {
        Serial.println("Didn't find Si1145");
-
+ 
    //    while (1);
      }
 
@@ -188,9 +198,9 @@ void handleRoot() {
      // integer index, divide by 100!
      UVindex /= 100.0;
 
-*/
 
-/* MPL3115A2 pre-flight
+
+/*MPL3115A2 pre-flight
 
 if (! baro.begin()) {
   Serial.println("Couldnt find MPL3115A2");
@@ -228,15 +238,15 @@ float tempF = ((tempC * 9)/5) + 32;
     root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
     root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
     root["tslLUX"] = (event.light);
-//    root["vml_UV"] = (vuv.readUV());
-//    root["siVis"] = (uv.readVisible());
-//    root["siIR"] = (uv.readIR());
-//    root["siUVindex"] = (UVindex);
+    root["vml_UV"] = (vuv.readUV());
+    root["siVis"] = (uv.readVisible());
+    root["siIR"] = (uv.readIR());
+    root["siUVindex"] = (UVindex);
 //    root["mplInchesHg"] = (pascals/3377);
-//   root["mplAltitudeMeters"] = baro.getAltitude();
-//   root["mplAltitudeFeet"] = (baro.getAltitude() * 3.3208399);
-//   root["mplTempC"] = baro.getTemperature();
-//   root["mplTempF"] = tempF;
+//    root["mplAltitudeMeters"] = baro.getAltitude();
+//    root["mplAltitudeFeet"] = (baro.getAltitude() * 3.3208399);
+//    root["mplTempC"] = baro.getTemperature();
+//    root["mplTempF"] = tempF;
 
 
   String readout;
