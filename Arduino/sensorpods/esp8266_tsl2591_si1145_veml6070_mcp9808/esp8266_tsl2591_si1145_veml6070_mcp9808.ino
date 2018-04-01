@@ -20,6 +20,10 @@
 //sensors
 #include <Adafruit_Sensor.h>
 #include "Adafruit_TSL2591.h"
+#include "Adafruit_SI1145.h"
+#include "Adafruit_VEML6070.h"
+#include "Adafruit_MCP9808.h"
+
 
 //io
 #include <ArduinoJson.h>
@@ -43,9 +47,10 @@ const int led = 13;
 
 ESP8266WebServer server(80);
 
-
-
+Adafruit_SI1145 uv = Adafruit_SI1145();
+Adafruit_VEML6070 vuv = Adafruit_VEML6070();
 Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591); // pass in a number for the sensor identifier (for your use later)
+Adafruit_MCP9808 tempsensor = Adafruit_MCP9808();
 
 
 /**************************************************************************/
@@ -134,7 +139,9 @@ if(!tsl.begin())
 
   // Now we're ready to get readings ... move on to loop()!
 
-// more sensors here
+
+
+
 };
 
 
@@ -228,6 +235,35 @@ tsl.getEvent(&event);
   ir = lum >> 16;
   full = lum & 0xFFFF;
 
+
+// si1145 pre-flight
+
+  if (! uv.begin()) {
+    Serial.println("Didn't find Si1145");
+   // while (1);
+    }
+
+  float UVindex = uv.readUV();
+    // the index is multiplied by 100 so to get the
+    // integer index, divide by 100!
+    UVindex /= 100.0;
+
+
+// veml6070 pre-flight
+    vuv.begin(VEML6070_1_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
+
+
+// mcp9808 pre-flight 
+// Make sure the sensor is found, you can also pass in a different i2c
+  // address with tempsensor.begin(0x19) for example
+  if (!tempsensor.begin()) {
+    Serial.println("Couldn't find MCP9808!");
+    // while (1);
+  }
+
+// Read and print out the temperature, then convert to *F
+  float mcpc = tempsensor.readTempC();
+  float mcpf = mcpc * 9.0 / 5.0 + 32;
   
 
 // json payload
@@ -236,12 +272,17 @@ StaticJsonBuffer<1024> jsonBuffer;
 JsonObject& root = jsonBuffer.createObject();
 
 
-    root["uvpod001_ms"] = (millis());
-    root["uvpod001_IR"] = (ir);
-    root["uvpod001_Full"] = (full);
-    root["uvpod001_Visible"] = (full - ir);
-    root["uvpod001_LUX"] = (event.light);
-   
+    root["uvpod001_tslms"] = (millis());
+    root["uvpod001_tslIR"] = (ir);
+    root["uvpod001_tslFull"] = (full);
+    root["uvpod001_tslVisible"] = (full - ir);
+    root["uvpod001_tslLUX"] = (event.light);
+    root["uvpod001_siVis"] = (uv.readVisible());
+    root["uvpod001_siIR"] = (uv.readIR());
+    root["uvpod001_siUVindex"] = (UVindex);
+    root["uvpod001_vmlUV"] = (vuv.readUV());
+    root["uvpod001_mcpTempF"] = (mcpf);
+    root["uvpod001_mcpTempC"] = (mcpc);
 
 
   String readout;
