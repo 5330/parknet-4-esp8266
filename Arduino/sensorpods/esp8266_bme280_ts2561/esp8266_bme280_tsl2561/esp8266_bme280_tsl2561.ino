@@ -1,4 +1,11 @@
-/hi
+
+/* i2c addressing
+ *
+ *  bme280: By default, the i2c address is 0x77.  If you add a jumper from SDO to GND, the address will change to 0x76.
+ *  tsl2561 Connect ADDR pin to ground to set the address to 0x29, connect it to 3.3V (vcc) to set the address to 0x49 or leave it floating (unconnected) to use address 0x39.
+
+*/
+
 
 
 //esp8266
@@ -11,29 +18,24 @@
 
 
 //sensors
-//#include <DHT_U.h>
-//#include <DHT.h>
 #include <Adafruit_TSL2561_U.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#
+
 #include <ArduinoJson.h>
 
-//#include <time.h>
-//ntp not yet impemented. maybe try https://www.arduinoslovakia.eu/blog/2017/7/esp8266---ntp-klient-a-letny-cas?lang=en
-// or better yet, fuck it and write time to "db" when we log. 
-//#include <WiFiUdp.h>
-//#include <TimeLib.h>
-//#include <Timezone.h>
 
 
-/* need to store these as arduino macros. 
+/* need to store these as arduino macros.
 https://github.com/RoboUlbricht/arduinoslovakia/tree/master/extra_parameter
 http://www.arduinoslovakia.eu/blog/2017/6/vlozenie-definicie-makra-do-programu-v-arduine?lang=en
 */
-//const char* ssid = "parknet";
-//const char* password = "s3ns0rNet";
-const char* ssid = "Verizon-791L-A905";
-const char* password = "66888aa6";
+
+const char* ssid = "parknet";
+const char* password = "s3ns0rNet";
+//const char* ssid = "Verizon-791L-A905";
+//const char* password = "66888aa6";
 
 
 
@@ -86,7 +88,7 @@ void configureSensor(void)
   {
     /* There was a problem detecting the TSL2561 ... check your connections */
     Serial.print("Ooops, no TSL2561 detected ... Check your wiring or I2C ADDR!");
-    while(1);
+//    while(1);
   }
 
 
@@ -99,24 +101,16 @@ void configureSensor(void)
 };
 
 
-// define bme280
-#define BME_SCK 13
-#define BME_MISO 12
-#define BME_MOSI 14
-#define BME_CS 16
 
 // default 1013.25  need to dynamically get this from http://www.wrh.noaa.gov/cnrfc/rsa_getObs.php?sid=KIND&num=48  updated every :54 of the hour
 //#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1008.9)
+#define SEALEVELPRESSURE_HPA (1020.0)
 
 
-//define dht22
-//#define DHTPIN 2     // what digital pin we're connected to
-//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
-//DHT dht(DHTPIN, DHTTYPE);
 
-Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
-//Adafruit_BME280 bme; // I2C
+//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
+Adafruit_BME280 bme;
+
 
 const int led = 13;
 
@@ -124,11 +118,10 @@ void handleRoot() {
 
   digitalWrite(led, 1);
 
-/*
   // initialize sensor (required)
       if (!bme.begin()) {
         Serial.println("Could not find a valid BME280 sensor, check wiring!");
-        while (1);
+    //    while (1);
       }
 
 
@@ -139,41 +132,33 @@ void handleRoot() {
     float temp = bme.readTemperature();
     float dpc =  (temp - (14.55 + 0.114 * temp) * (1 - (0.01 * humi)) - pow(((2.5 + 0.007 * temp) * (1 - (0.01 * humi))),3) - (15.9 + 0.117 * temp) * pow((1 - (0.01 * humi)), 14));
     float dpf = ((dpc * 9)/5) + 32;
-    
+
     float fahrenheit = ((temp * 9)/5) + 32;
 
-   
+
 
 // tsl pre-flight
   sensors_event_t event;
    tsl.getEvent(&event);
- 
 
 
-// time 
-//time_t now = time(nullptr);
-// i swear this was reporting accurate time but 8 hours ahead, now it is showing epoch/1970 shit, fekkit. 
-
-*/
-  
-  
 // json payload
- 
+
   StaticJsonBuffer<1024> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
- 
- //   root["reading"] = (ctime(&now));
-//    root["bmeTempF"] = (fahrenheit);
- //   root["bmeTempC"] = (bme.readTemperature());
- //   root["bmeHumidity"] = (bme.readHumidity());
- //   root["bmeDewPointC"] = (dpc);
- //   root["bmeDewPointF"] = (dpf);
- //   root["bmePressurehPa"] = ((bme.readPressure() / 100.0F));
-//    root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
- //   root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
- //   root["tslLux"] = (event.light);
 
- 
+    root["pod001_bmeTempF"] = (fahrenheit);
+    root["pod001_bmeTempC"] = (bme.readTemperature());
+    root["pod001_bmeHumidity"] = (bme.readHumidity());
+    root["pod001_bmeDewPointC"] = (dpc);
+    root["pod001_bmeDewPointF"] = (dpf);
+    root["pod001_bmePressurehPa"] = ((bme.readPressure() / 100.0F));
+    root["pod001_bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
+    root["pod001_bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
+    root["pod001_tslLUX"] = (event.light);
+
+
+
   String readout;
   root.prettyPrintTo(readout);
   server.send(200, "text/json", readout );
@@ -181,53 +166,6 @@ void handleRoot() {
   digitalWrite(led, 0);
 
 }
-
-
-/*  text readout  this works
-
- char readout[1024];
-
- float celsius = bme.readTemperature();
- float fahrenheit = ((celsius * 9)/5) + 32;
-
- float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  float f = dht.readTemperature(true);
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t) || isnan(f)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
-
-
-  sensors_event_t event;
-  tsl.getEvent(&event);
-
-
- sprintf(readout,
-     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",
-      bme.readHumidity(),
-      bme.readTemperature(),
-      fahrenheit,
-      (bme.readPressure() / 100.0F),
-      (bme.readAltitude(SEALEVELPRESSURE_HPA)),
-      (bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.2808399,
-       dht.readHumidity(),
-       dht.readTemperature(),
-       dht.readTemperature(true),
-       dht.computeHeatIndex(f, h),
-       event.light
-      );
- server.send(200, "text/plain", readout );
-
-  digitalWrite(led, 0);
-}
-
-*/
-
 
 
 
@@ -278,16 +216,9 @@ void setup(void){
 
   server.on("/",handleRoot);
 
-    server.on("/inline", [](){
-      server.send(200, "text/plain", "this works as well");
-      });
-
     server.onNotFound(handleNotFound);
-
     server.begin();
     Serial.println("HTTP server started");
- //   time_t now = time(nullptr);
-//     Serial.println(ctime(&now));
   }
 
   void loop(void){

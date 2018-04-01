@@ -14,8 +14,9 @@
 
 This config: 
 si1145 0x60  fixed
-tsl2561 Connect ADDR pin to ground to set the address to 0x29
-
+veml6070 0x38 and 0x39 fixed
+tsl2561  Connect ADDR pin to ground to set the address to 0x29
+bme280:  0x77
 
 */  
 
@@ -157,13 +158,31 @@ void handleRoot() {
 
   digitalWrite(led, 1);
 
-  
+  // initialize sensor (required)
+      if (!bme.begin()) {
+        Serial.println("Could not find a valid BME280 sensor, check wiring!");
+        while (1);
+      }
+
+
+
+//bme pre-flight
+
+    float humi = bme.readHumidity();
+    float temp = bme.readTemperature();
+    float dpc =  (temp - (14.55 + 0.114 * temp) * (1 - (0.01 * humi)) - pow(((2.5 + 0.007 * temp) * (1 - (0.01 * humi))),3) - (15.9 + 0.117 * temp) * pow((1 - (0.01 * humi)), 14));
+    float dpf = ((dpc * 9)/5) + 32;
+
+    float fahrenheit = ((temp * 9)/5) + 32;
 
 
 
 // tsl pre-flight
   sensors_event_t event;
    tsl.getEvent(&event);
+
+// veml6070 pre-flight
+   vuv.begin(VEML6070_4_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
 
  
 // si1145 pre-flight
@@ -181,6 +200,28 @@ void handleRoot() {
 
 
 
+/*MPL3115A2 pre-flight
+
+if (! baro.begin()) {
+  Serial.println("Couldnt find MPL3115A2");
+//  while (1);
+}
+float pascals = baro.getPressure();
+// Our weather page presents pressure in Inches (Hg)
+// Use http://www.onlineconversion.com/pressure.htm for other units
+//Serial.print(pascals/3377); Serial.println(" Inches (Hg)");
+
+float altm = baro.getAltitude();
+//Serial.print(altm); Serial.println(" meters");
+
+float tempC = baro.getTemperature();
+//Serial.print(tempC); Serial.println("*C");
+
+float tempF = ((tempC * 9)/5) + 32;
+*/
+
+// time
+//time_t now = time(nullptr);
 
 // json payload
 
@@ -188,16 +229,16 @@ void handleRoot() {
   JsonObject& root = jsonBuffer.createObject();
 
  //   root["reading"] = (ctime(&now));
- //   root["bmeTempF"] = (fahrenheit);
- //   root["bmeTempC"] = (bme.readTemperature());
- //   root["bmeHumidity"] = (bme.readHumidity());
- //   root["bmeDewPointC"] = (dpc);
- //   root["bmeDewPointF"] = (dpf);
- //   root["bmePressurehPa"] = ((bme.readPressure() / 100.0F));
- //   root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
- //   root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
+    root["bmeTempF"] = (fahrenheit);
+    root["bmeTempC"] = (bme.readTemperature());
+    root["bmeHumidity"] = (bme.readHumidity());
+    root["bmeDewPointC"] = (dpc);
+    root["bmeDewPointF"] = (dpf);
+    root["bmePressurehPa"] = ((bme.readPressure() / 100.0F));
+    root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
+    root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
     root["tslLUX"] = (event.light);
-//    root["vml_UV"] = (vuv.readUV());
+    root["vml_UV"] = (vuv.readUV());
     root["siVis"] = (uv.readVisible());
     root["siIR"] = (uv.readIR());
     root["siUVindex"] = (UVindex);
@@ -323,6 +364,8 @@ void setup(void){
 
     server.begin();
     Serial.println("HTTP server started");
+ //   time_t now = time(nullptr);
+//     Serial.println(ctime(&now));
   }
 
   void loop(void){

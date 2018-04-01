@@ -5,12 +5,8 @@
  *
  *  tsl2561 Connect ADDR pin to ground to set the address to 0x29, connect it to 3.3V (vcc) to set the address to 0x49 or leave it floating (unconnected) to use address 0x39.
  *
- *  SI1145 has a fixed I2C address (0x60)
- *
  *  MPL3115A2 - I2C 7-bit fixed address 0x60
  *
- *  VEML6070 UV sensor uses I2c 0x38 and 0x39.
-
 
 */
 
@@ -26,23 +22,12 @@
 
 
 //sensors
-//#include <DHT_U.h>
-//#include <DHT.h>
 #include <Adafruit_TSL2561_U.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
-#include "Adafruit_VEML6070.h"
-#include "Adafruit_SI1145.h"
 #include <Adafruit_MPL3115A2.h>
 
 #include <ArduinoJson.h>
-
-//#include <time.h>
-//ntp not yet impemented. maybe try https://www.arduinoslovakia.eu/blog/2017/7/esp8266---ntp-klient-a-letny-cas?lang=en
-
-//#include <WiFiUdp.h>
-//#include <TimeLib.h>
-//#include <Timezone.h>
 
 
 /* need to store these as arduino macros.
@@ -119,29 +104,15 @@ void configureSensor(void)
 };
 
 
-// define bme280
-#define BME_SCK 13
-#define BME_MISO 12
-#define BME_MOSI 14
-#define BME_CS 16
+
+
 
 // default 1013.25  need to dynamically get this from http://www.wrh.noaa.gov/cnrfc/rsa_getObs.php?sid=KIND&num=48  updated every :54 of the hour
 //#define SEALEVELPRESSURE_HPA (1013.25)
-#define SEALEVELPRESSURE_HPA (1014.6)
+#define SEALEVELPRESSURE_HPA (1020.0)
 
 
-//define dht22
-//#define DHTPIN 2     // what digital pin we're connected to
-//#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
-//DHT dht(DHTPIN, DHTTYPE);
-
-//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
 Adafruit_BME280 bme; // I2C
-
-Adafruit_VEML6070 vuv = Adafruit_VEML6070();
-
-
-Adafruit_SI1145 uv = Adafruit_SI1145();
 
 Adafruit_MPL3115A2 baro = Adafruit_MPL3115A2();
 
@@ -175,24 +146,6 @@ void handleRoot() {
   sensors_event_t event;
    tsl.getEvent(&event);
 
-// veml6070 pre-flight
-   vuv.begin(VEML6070_1_T);  // pass in the integration time constant  1 - 4, 4 being more accurate but slower.
-
-
- /*si1145 pre-flight
-
-     if (! uv.begin()) {
-       Serial.println("Didn't find Si1145");
-
-   //    while (1);
-     }
-
-   float UVindex = uv.readUV();
-     // the index is multiplied by 100 so to get the
-     // integer index, divide by 100!
-     UVindex /= 100.0;
-
-*/
 
 // MPL3115A2 pre-flight
 
@@ -222,25 +175,20 @@ float tempF = ((tempC * 9)/5) + 32;
   StaticJsonBuffer<1024> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
 
- //   root["reading"] = (ctime(&now));
-    root["bmeTempF"] = (fahrenheit);
-    root["bmeTempC"] = (bme.readTemperature());
-    root["bmeHumidity"] = (bme.readHumidity());
-    root["bmeDewPointC"] = (dpc);
-    root["bmeDewPointF"] = (dpf);
-    root["bmePressurehPa"] = ((bme.readPressure() / 100.0F));
-    root["bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
-    root["bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
-//    root["tslLUX"] = (event.light);
-    root["vml_UV"] = (vuv.readUV());
-//    root["siVis"] = (uv.readVisible());
-//    root["siIR"] = (uv.readIR());
-//    root["siUVindex"] = (UVindex);
-    root["mplInchesHg"] = (pascals/3377);
-    root["mplAltitudeMeters"] = baro.getAltitude();
-    root["mplAltitudeFeet"] = (baro.getAltitude() * 3.3208399);
-    root["mplTempC"] = baro.getTemperature();
-    root["mplTempF"] = tempF;
+    root["pod002_bmeTempF"] = (fahrenheit);
+    root["pod002_bmeTempC"] = (bme.readTemperature());
+    root["pod002_bmeHumidity"] = (bme.readHumidity());
+    root["pod002_bmeDewPointC"] = (dpc);
+    root["pod002_bmeDewPointF"] = (dpf);
+    root["pod002_bmePressurehPa"] = ((bme.readPressure() / 100.0F));
+    root["pod002_bmeApproxAltitudeM"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)));
+    root["pod002_bmeApproxAltitudeF"] = ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399);
+    root["pod002_tslLUX"] = (event.light);
+    root["pod002_mplInchesHg"] = (pascals/3377);
+    root["pod002_mplAltitudeMeters"] = baro.getAltitude();
+    root["pod002_mplAltitudeFeet"] = (baro.getAltitude() * 3.3208399);
+    root["pod002_mplTempC"] = baro.getTemperature();
+    root["pod002_mplTempF"] = tempF;
 
 
   String readout;
@@ -250,58 +198,6 @@ float tempF = ((tempC * 9)/5) + 32;
   digitalWrite(led, 0);
 
 }
-
-
-/*  text readout  this works
-
- char readout[1024];
-
- float celsius = bme.readTemperature();
- float fahrenheit = ((celsius * 9)/5) + 32;
-
- float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
-  // Read temperature as Fahrenheit (isFahrenheit = true)
-  float f = dht.readTemperature(true);
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t) || isnan(f)) {
-    Serial.println("Failed to read from DHT sensor!");
-    return;
-  }
-
-
-  sensors_event_t event;
-  tsl.getEvent(&event);
-
-
- sprintf(readout,
-     "BME280 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Pressure: %.02f hPa \n Approx. Altitude: %.02f meters / %.02f feet \nDHT22 \n Relative Humidity: %.02f%% \n Temp: %.02fc / %.02ff \n Heat Index: %.02ff \nTSL2561 \n lux: %.02f lux \n",
-      bme.readHumidity(),
-      bme.readTemperature(),
-      fahrenheit,
-      (bme.readPressure() / 100.0F),
-      (bme.readAltitude(SEALEVELPRESSURE_HPA)),
-      (bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.2808399,
-       dht.readHumidity(),
-       dht.readTemperature(),
-       dht.readTemperature(true),
-       dht.computeHeatIndex(f, h),
-       event.light
-      );
- server.send(200, "text/plain", readout );
-
-  digitalWrite(led, 0);
-}
-
-*/
-
-
-
-
-
-
 
 
 void handleNotFound(){
@@ -347,19 +243,11 @@ void setup(void){
 
   server.on("/",handleRoot);
 
-/*
-    server.on("/inline", [](){
-      server.send(200, "text/plain", "this works as well");
-      });
-*/
-
 
     server.onNotFound(handleNotFound);
 
     server.begin();
     Serial.println("HTTP server started");
- //   time_t now = time(nullptr);
-//     Serial.println(ctime(&now));
   }
 
   void loop(void){
