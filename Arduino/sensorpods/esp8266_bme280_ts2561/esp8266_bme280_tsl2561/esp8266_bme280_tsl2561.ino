@@ -2,11 +2,7 @@
 /* i2c addressing
  *
  *  bme280: By default, the i2c address is 0x77.  If you add a jumper from SDO to GND, the address will change to 0x76.
- *
  *  tsl2561 Connect ADDR pin to ground to set the address to 0x29, connect it to 3.3V (vcc) to set the address to 0x49 or leave it floating (unconnected) to use address 0x39.
- *
- *  MPL3115A2 - I2C 7-bit fixed address 0x60
- *
 
 */
 
@@ -25,9 +21,10 @@
 #include <Adafruit_TSL2561_U.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
-#include <Adafruit_MPL3115A2.h>
+#
 
 #include <ArduinoJson.h>
+
 
 
 /* need to store these as arduino macros.
@@ -105,16 +102,14 @@ void configureSensor(void)
 
 
 
-
-
 // default 1013.25  need to dynamically get this from http://www.wrh.noaa.gov/cnrfc/rsa_getObs.php?sid=KIND&num=48  updated every :54 of the hour
 //#define SEALEVELPRESSURE_HPA (1013.25)
 #define SEALEVELPRESSURE_HPA (1024.2)
 
 
-Adafruit_BME280 bme; // I2C
 
-Adafruit_MPL3115A2 baro = Adafruit_MPL3115A2();
+//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
+Adafruit_BME280 bme;
 
 
 const int led = 13;
@@ -147,72 +142,46 @@ void handleRoot() {
    tsl.getEvent(&event);
 
 
-// MPL3115A2 pre-flight
-
-if (! baro.begin()) {
-  Serial.println("Couldnt find MPL3115A2");
-//  while (1);
-}
-float pascals = baro.getPressure();
-// Our weather page presents pressure in Inches (Hg)
-// Use http://www.onlineconversion.com/pressure.htm for other units
-//Serial.print(pascals/3377); Serial.println(" Inches (Hg)");
-
-float altm = baro.getAltitude();
-//Serial.print(altm); Serial.println(" meters");
-
-float tempC = baro.getTemperature();
-//Serial.print(tempC); Serial.println("*C");
-
-float tempF = ((tempC * 9)/5) + 32;
-
 
 // float wrangling. influxdb can't tolerate a float with no decimals so.. 
 
 // Print in string the value of float with two decimal points
 
 
-char pod002_bmeTempF[10];
-sprintf(pod002_bmeTempF, "%.2f", (fahrenheit));
+char pod001_bmeTempF[10];
+sprintf(pod001_bmeTempF, "%.2f", (fahrenheit));
 
-char pod002_bmeTempC[10];
-sprintf(pod002_bmeTempC, "%.2f", (bme.readTemperature()));
+char pod001_bmeTempC[10];
+sprintf(pod001_bmeTempC, "%.2f", (bme.readTemperature()));
 
-char pod002_bmeHumidity[10];
-sprintf(pod002_bmeHumidity, "%.2f", (bme.readHumidity()));
+char pod001_bmeHumidity[10];
+sprintf(pod001_bmeHumidity, "%.2f", (bme.readHumidity()));
 
-char pod002_bmeDewPointC[10];
-sprintf(pod002_bmeDewPointC, "%.2f", (dpc));
+char pod001_bmeDewPointC[10];
+sprintf(pod001_bmeDewPointC, "%.2f", (dpc));
 
-char pod002_bmeDewPointF[10];
-sprintf(pod002_bmeDewPointF, "%.2f", (dpf));
+char pod001_bmeDewPointF[10];
+sprintf(pod001_bmeDewPointF, "%.2f", (dpf));
 
-char pod002_bmePressurehPa[10];
-sprintf(pod002_bmePressurehPa, "%.2f", ((bme.readPressure() / 100.0F)));
+char pod001_bmePressurehPa[10];
+sprintf(pod001_bmePressurehPa, "%.2f", ((bme.readPressure() / 100.0F)));
 
-char pod002_bmeApproxAltitudeM[10];
-sprintf(pod002_bmeApproxAltitudeM, "%.2f", ((bme.readAltitude(SEALEVELPRESSURE_HPA))));
+char pod001_bmeApproxAltitudeM[10];
+sprintf(pod001_bmeApproxAltitudeM, "%.2f", ((bme.readAltitude(SEALEVELPRESSURE_HPA))));
 
-char pod002_bmeApproxAltitudeF[10];
-sprintf(pod002_bmeApproxAltitudeF, "%.2f", ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399));
+char pod001_bmeApproxAltitudeF[10];
+sprintf(pod001_bmeApproxAltitudeF, "%.2f", ((bme.readAltitude(SEALEVELPRESSURE_HPA)) * 3.3208399));
 
-char pod002_tslLUX[10];
-sprintf(pod002_tslLUX, "%.2f", (event.light));
+char pod001_tslLUX[10];
+sprintf(pod001_tslLUX, "%.2f", (event.light));
 
-char pod002_mplInchesHg[10];
-sprintf(pod002_mplInchesHg, "%.2f", (pascals/3377));
 
-char pod002_mplAltitudeMeters[10];
-sprintf(pod002_mplAltitudeMeters, "%.2f", (baro.getAltitude()));
 
-char pod002_mplAltitudeFeet[10];
-sprintf(pod002_mplAltitudeFeet, "%.2f", (baro.getAltitude() * 3.3208399));
 
-char pod002_mplTempC[10];
-sprintf(pod002_mplTempC, "%.2f", (baro.getTemperature()));
 
-char pod002_mplTempF[10];
-sprintf(pod002_mplTempF, "%.2f", (tempF));
+
+
+
 
 
 // json payload
@@ -220,20 +189,16 @@ sprintf(pod002_mplTempF, "%.2f", (tempF));
   StaticJsonBuffer<1024> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
 
-    root["pod002_bmeTempF"] = (pod002_bmeTempF);
-    root["pod002_bmeTempC"] = (pod002_bmeTempC);
-    root["pod002_bmeHumidity"] = (pod002_bmeHumidity);
-    root["pod002_bmeDewPointC"] = (pod002_bmeDewPointC);
-    root["pod002_bmeDewPointF"] = (pod002_bmeDewPointF);
-    root["pod002_bmePressurehPa"] = (pod002_bmePressurehPa);
-    root["pod002_bmeApproxAltitudeM"] = (pod002_bmeApproxAltitudeM);
-    root["pod002_bmeApproxAltitudeF"] = (pod002_bmeApproxAltitudeF);
-    root["pod002_tslLUX"] = (pod002_tslLUX);
-    root["pod002_mplInchesHg"] = (pod002_mplInchesHg);
-    root["pod002_mplAltitudeMeters"] = (pod002_mplAltitudeMeters);
-    root["pod002_mplAltitudeFeet"] = (pod002_mplAltitudeFeet);
-    root["pod002_mplTempC"] = (pod002_mplTempC);
-    root["pod002_mplTempF"] = (pod002_mplTempF);
+    root["pod001_bmeTempF"] = (pod001_bmeTempF);
+    root["pod001_bmeTempC"] = (pod001_bmeTempC);
+    root["pod001_bmeHumidity"] = (pod001_bmeHumidity);
+    root["pod001_bmeDewPointC"] = (pod001_bmeDewPointC);
+    root["pod001_bmeDewPointF"] = (pod001_bmeDewPointF);
+    root["pod001_bmePressurehPa"] = (pod001_bmePressurehPa);
+    root["pod001_bmeApproxAltitudeM"] = (pod001_bmeApproxAltitudeM);
+    root["pod001_bmeApproxAltitudeF"] = (pod001_bmeApproxAltitudeF);
+    root["pod001_tslLUX"] = (pod001_tslLUX);
+
 
 
   String readout;
@@ -243,6 +208,11 @@ sprintf(pod002_mplTempF, "%.2f", (tempF));
   digitalWrite(led, 0);
 
 }
+
+
+
+
+
 
 
 void handleNotFound(){
@@ -288,9 +258,7 @@ void setup(void){
 
   server.on("/",handleRoot);
 
-
     server.onNotFound(handleNotFound);
-
     server.begin();
     Serial.println("HTTP server started");
   }
