@@ -264,6 +264,20 @@ tsl.getEvent(&event);
 // Read and print out the temperature, then convert to *F
   float mcpc = tempsensor.readTempC();
   float mcpf = mcpc * 9.0 / 5.0 + 32;
+
+
+// float wrangling. influxdb can't tolerate a float with no decimals so.. 
+
+// Print in string the value of float with two decimal points
+
+char uvpod001_tslLUX[10];
+sprintf(uvpod001_tslLUX, "%.2f", (event.light));
+
+char uvpod001_mcpTempF[10];
+sprintf(uvpod001_mcpTempF, "%.2f", (mcpf));
+
+char uvpod001_mcpTempC[10];
+sprintf(uvpod001_mcpTempC, "%.2f", (mcpc));
   
 
 // json payload
@@ -276,13 +290,13 @@ JsonObject& root = jsonBuffer.createObject();
     root["uvpod001_tslIR"] = (ir);
     root["uvpod001_tslFull"] = (full);
     root["uvpod001_tslVisible"] = (full - ir);
-    root["uvpod001_tslLUX"] = (event.light);
+    root["uvpod001_tslLUX"] = (uvpod001_tslLUX);
     root["uvpod001_siVis"] = (uv.readVisible());
     root["uvpod001_siIR"] = (uv.readIR());
     root["uvpod001_siUVindex"] = (UVindex);
     root["uvpod001_vmlUV"] = (vuv.readUV());
-    root["uvpod001_mcpTempF"] = (mcpf);
-    root["uvpod001_mcpTempC"] = (mcpc);
+    root["uvpod001_mcpTempF"] = (uvpod001_mcpTempF);
+    root["uvpod001_mcpTempC"] = (uvpod001_mcpTempC);
 
 
   String readout;
