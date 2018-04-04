@@ -9,6 +9,10 @@ with urllib.request.urlopen("http://pod002.indybungalow.com") as url2:
 with urllib.request.urlopen("http://uvpod001.indybungalow.com") as url2:
     uvdata001 = json.loads(url2.read())
 
+with urllib.request.urlopen("http://pod003.indybungalow.com") as url2:
+    data003 = json.loads(url2.read())
+
+
 pod001_bmeTempF = (data001['pod001_bmeTempF'])
 pod001_bmeTempC = (data001['pod001_bmeTempC'])
 pod001_bmeHumidity = (data001['pod001_bmeHumidity'])
@@ -46,6 +50,21 @@ uvpod001_vmlUV = (uvdata001['uvpod001_vmlUV'])
 uvpod001_mcpTempF = (uvdata001['uvpod001_mcpTempF'])
 uvpod001_mcpTempC = (uvdata001['uvpod001_mcpTempC'])
 
+pod003_bmeTempF = data003['pod003_bmeTempF'])
+pod003_bmeTempC = data003['pod003_bmeTempC'])
+pod003_bmeHumidity = data003['pod003_bmeHumidity'])
+pod003_bmeDewPointC = data003['pod003_bmeDewPointC'])
+pod003_bmeDewPointF = data003['pod003_bmeDewPointF'])
+pod003_bmePressurehPa = data003['pod003_bmePressurehPa'])
+pod003_bmeApproxAltitudeM = data003['pod003_bmeApproxAltitudeM'])
+pod003_bmeApproxAltitudeF = data003['pod003_bmeApproxAltitudeF'])
+pod003_bmeGasResistanceKOhms = data003['pod003_bmeGasResistanceKOhms'])
+pod003_tslLUX = data003['pod003_tslLUX'])
+pod003_mplInchesHg = data003['pod003_mplInchesHg'])
+pod003_mplAltitudeMeters = data003['pod003_mplAltitudeMeters'])
+pod003_mplAltitudeFeet = data003['pod003_mplAltitudeFeet'])
+pod003_mplTempC = data003['pod003_mplTempC'])
+pod003_mplTempF = data003['pod003_mplTempF'])
 
 from datetime import datetime
 
@@ -132,6 +151,34 @@ json_body_003 = [
     }
 ]
 
+json_body_004 = [
+    {
+        "measurement": "sensor_arrays",
+        "tags": {
+            "unit": "pod003",
+            "location": "breadboard001"
+        },
+        "time": (reading),
+        "fields": {
+
+        'pod003_bmeTempF': (pod003_bmeTempF),
+        'pod003_bmeTempC': (pod003_bmeTempC),
+        'pod003_bmeHumidity': (pod003_bmeHumidity),
+        'pod003_bmeDewPointC': (pod003_bmeDewPointC),
+        'pod003_bmeDewPointF': (pod003_bmeDewPointF),
+        'pod003_bmePressurehPa': (pod003_bmePressurehPa),
+        'pod003_bmeApproxAltitudeM': (pod003_bmeApproxAltitudeM),
+        'pod003_bmeApproxAltitudeF': (pod003_bmeApproxAltitudeF),
+        'pod003_bmeGasResistanceKOhms': (pod003_bmeGasResistanceKOhms),
+        'pod003_tslLUX': (pod003_tslLUX),
+        'pod003_mplInchesHg': (pod003_mplInchesHg),
+        'pod003_mplAltitudeMeters': (pod003_mplAltitudeMeters),
+        'pod003_mplAltitudeFeet': (pod003_mplAltitudeFeet),
+        'pod003_mplTempC': (pod003_mplTempC),
+        'pod003_mplTempF': (pod003_mplTempF),
+        }
+    }
+]
 
 
 
@@ -142,3 +189,4 @@ client = InfluxDBClient('localhost', 8086, 'root', 'root', 'sensor_arrays')
 client.write_points(json_body_001)
 client.write_points(json_body_002)
 client.write_points(json_body_003)
+client.write_points(json_body_004)
